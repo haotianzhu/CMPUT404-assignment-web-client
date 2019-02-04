@@ -41,13 +41,13 @@ class HTTPClient(object):
         return None
 
     def get_code(self, data):
-        return None
+        return int(data.split()[1])
 
     def get_headers(self,data):
-        return None
+        return data.split('\r\n\r\n')[0]
 
     def get_body(self, data):
-        return None
+        return data.split('\r\n\r\n')[-1]
     
     def sendall(self, data):
         self.socket.sendall(data.encode('utf-8'))
@@ -68,14 +68,68 @@ class HTTPClient(object):
         return buffer.decode('utf-8')
 
     def GET(self, url, args=None):
-        code = 500
-        body = ""
+        # connect
+        o = urllib.parse.urlparse(url)
+        if o.port is None:
+            port = 80
+        else:
+            port = o.port
+        
+        if o.path is '':
+            path = '/'
+        else:
+            path = o.path
+
+        self.connect(o.hostname, port)
+        req = '''GET {} HTTP/1.1\r\nAccept-Encoding: identity\r
+Host: {}\r\nUser-Agent: Python-urllib/3.7\r\nConnection: close\r\n\r\n'''.format(
+        path, o.hostname
+    )   
+        self.sendall(req)   
+        # get data
+        data = self.recvall(self.socket)
+  
+        code = self.get_code(data)
+        body = self.get_body(data)
+        self.close()
         return HTTPResponse(code, body)
 
     def POST(self, url, args=None):
-        code = 500
-        body = ""
+        # connect
+        if args is not None:
+            query = urllib.parse.urlencode(args)
+        else:
+            query=''
+        # urllib.parse.parse_qsl
+        o = urllib.parse.urlparse(url)
+        if o.port is None:
+            port = 80
+        else:
+            port = o.port
+        
+        if o.path is '':
+            path = '/'
+        else:
+            path = o.path 
+        if query:
+            length = max(len(query),8)
+        else:
+            length =  8
+
+        self.connect(o.hostname, port)
+        req = '''POST {} HTTP/1.1\r\nAccept-Encoding: identity\r
+Content-Type: application/x-www-form-urlencoded\r\nContent-Length: {}\r
+Host: {}\r\nUser-Agent: Python-urllib/3.7\r\nConnection: Keep-Alive\r\n\r\n{}'''.format(
+        path, length, o.hostname, query
+    )
+        self.sendall(req)   
+        # get data
+        data = self.recvall(self.socket)
+        code = self.get_code(data)
+        body = self.get_body(data)
+        self.close()
         return HTTPResponse(code, body)
+
 
     def command(self, url, command="GET", args=None):
         if (command == "POST"):

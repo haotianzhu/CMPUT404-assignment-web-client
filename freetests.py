@@ -222,6 +222,7 @@ class TestHTTPClient(unittest.TestCase):
             try:
                 req = http.GET( url )
             except Exception as e:
+                print(e,'htz')
                 print("An Exception was thrown for %s" % url)
                 self.assertTrue( False, "An Exception was thrown for %s %s" % (url,e))
             self.assertTrue(req != None, "None Returned! %s" % url)
